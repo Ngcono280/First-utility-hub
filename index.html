@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Glass Timer</title>
+    <style>
+        /* Переменные для легкой смены тем */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #e0e9f5, #b8cbe4);
+            --bubble-gradient: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0));
+            --bubble-shadow: inset 10px 10px 20px rgba(255,255,255,0.5), 20px 20px 40px rgba(0,0,0,0.08);
+            
+            --container-bg: rgba(255, 255, 255, 0.4);
+            --container-border: rgba(255, 255, 255, 0.6);
+            --container-shadow: 
+                inset 10px 10px 20px rgba(255, 255, 255, 0.8),
+                inset -10px -10px 20px rgba(163, 177, 198, 0.5),
+                10px 20px 40px rgba(0, 0, 0, 0.06),
+                -5px -5px 15px rgba(255, 255, 255, 0.5);
+                
+            --text-color: #3a4759;
+            --text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.05), -1px -1px 0px rgba(255, 255, 255, 0.9);
+            
+            --btn-bg: rgba(255, 255, 255, 0.5);
+            --btn-color: #4a5768;
+            --btn-border: rgba(255, 255, 255, 0.7);
+            --btn-shadow: inset 3px 3px 6px rgba(255, 255, 255, 0.8), inset -3px -3px 6px rgba(163, 177, 198, 0.3), 3px 5px 10px rgba(0, 0, 0, 0.04);
+            --btn-hover-shadow: inset 3px 3px 6px rgba(255, 255, 255, 0.9), inset -3px -3px 6px rgba(163, 177, 198, 0.4), 5px 8px 15px rgba(0, 0, 0, 0.06);
+            --btn-active-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.4), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+        }
+
+        /* Темная тема (Dark Liquid Glass) */
+        [data-theme="dark"] {
+            --bg-gradient: linear-gradient(135deg, #181e29, #0d1117);
+            --bubble-gradient: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+            --bubble-shadow: inset 5px 5px 15px rgba(255,255,255,0.1), 10px 15px 30px rgba(0,0,0,0.5);
+            
+            --container-bg: rgba(22, 28, 38, 0.4);
+            --container-border: rgba(255, 255, 255, 0.08);
+            --container-shadow: 
+                inset 5px 5px 15px rgba(255, 255, 255, 0.08),
+                inset -10px -10px 20px rgba(0, 0, 0, 0.6),
+                15px 25px 50px rgba(0, 0, 0, 0.4),
+                -5px -5px 15px rgba(255, 255, 255, 0.02);
+                
+            --text-color: #e2e8f0;
+            --text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), -1px -1px 0px rgba(255, 255, 255, 0.1);
+            
+            --btn-bg: rgba(255, 255, 255, 0.04);
+            --btn-color: #cbd5e1;
+            --btn-border: rgba(255, 255, 255, 0.05);
+            --btn-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.05), inset -2px -2px 5px rgba(0, 0, 0, 0.4), 2px 4px 8px rgba(0, 0, 0, 0.3);
+            --btn-hover-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.1), inset -2px -2px 5px rgba(0, 0, 0, 0.5), 4px 6px 12px rgba(0, 0, 0, 0.4);
+            --btn-active-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-gradient);
+            overflow: hidden;
+            position: relative;
+            transition: background 0.5s ease;
+        }
+
+        /* Задний фон с жидкими каплями */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: var(--bubble-gradient);
+            backdrop-filter: blur(10px);
+            z-index: 0;
+            transition: all 0.5s ease;
+        }
+
+        body::before {
+            width: 300px;
+            height: 300px;
+            top: -50px;
+            left: -50px;
+            box-shadow: var(--bubble-shadow);
+        }
+
+        body::after {
+            width: 250px;
+            height: 250px;
+            bottom: -50px;
+            right: -50px;
+            box-shadow: var(--bubble-shadow);
+        }
+
+        /* Анимированный фон (пузырьки + частицы) */
+        .bg-fx {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Пузырьки: в покое стоят на месте, при запуске слегка покачиваются */
+        .bg-fx .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 255, 0.55),
+                rgba(255, 255, 255, 0.04) 70%);
+            backdrop-filter: blur(3px);
+            box-shadow: inset 3px 3px 8px rgba(255, 255, 255, 0.4);
+            will-change: transform;
+        }
+
+        body.running .bg-fx .bubble {
+            animation: bob var(--dur, 4s) ease-in-out infinite;
+        }
+
+        /* Частицы: скрыты в покое, при запуске плавно плывут вверх */
+        .bg-fx .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+        body.running .bg-fx .particle {
+            animation: drift var(--dur, 9s) linear infinite;
+            animation-delay: var(--delay, 0s);
+        }
+
+        @keyframes bob {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-18px); }
+        }
+
+        @keyframes drift {
+            0%   { transform: translate(0, 0); opacity: 0; }
+            10%  { opacity: 1; }
+            100% { transform: translate(var(--tx, 30px), -105vh); opacity: 0; }
+        }
+
+        /* Свечение при завершении таймера */
+        .finish-glow {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(circle at center,
+                rgba(255, 190, 90, 0.55),
+                rgba(255, 110, 140, 0.30) 40%,
+                transparent 75%);
+            transition: opacity 0.8s ease;
+        }
+
+        body.finished .finish-glow {
+            opacity: 1;
+            animation: glowPulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.35; }
+            50%      { opacity: 0.9; }
+        }
+
+        /* Верхняя панель (шапка) с вкладками */
+        .app-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 28px;
+            z-index: 20;
+        }
+
+        .brand {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-color);
+            text-shadow: var(--text-shadow);
+            letter-spacing: 0.5px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 500;
+            border: 1px solid var(--btn-border);
+            border-radius: 25px;
+            cursor: pointer;
+            background: var(--btn-bg);
+            color: var(--btn-color);
+            box-shadow: var(--btn-shadow);
+            transition: all 0.3s ease, color 0.5s ease, background 0.5s ease, border 0.5s ease;
+        }
+
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--btn-hover-shadow);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #6a8dff, #9b6aff);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 6px 16px rgba(120, 130, 255, 0.35);
+        }
+
+        /* Основная область с переключаемыми экранами */
+        .app-main {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .view {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 90px 20px 20px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.94) translateY(24px);
+            transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s;
+            pointer-events: none;
+        }
+
+        .view.active {
+            opacity: 1;
+            visibility: visible;
+            transform: none;
+            pointer-events: auto;
+        }
+
+        /* Экран генератора паролей */
+        .password-container {
+            width: min(480px, 100%);
+            padding: 36px 40px;
+            border-radius: 40px;
+            background: var(--container-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--container-border);
+            box-shadow: var(--container-shadow);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            transition: all 0.5s ease;
+        }
+
+        .pw-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            text-shadow: var(--text-shadow);
+        }
+
+        .pw-output {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            box-shadow: var(--btn-shadow);
+        }
+
+        .pw-output span {
+            flex: 1;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.1rem;
+            word-break: break-all;
+            text-align: left;
+            color: var(--text-color);
+        }
+
+        .pw-copy {
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+
+        .pw-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            text-align: left;
+            color: var(--text-color);
+        }
+
+        .pw-length {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
+
+        .pw-length input[type="range"] {
+            width: 100%;
+            accent-color: #6a8dff;
+            cursor: pointer;
+        }
+
+        .pw-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .pw-check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #6a8dff;
+            cursor: pointer;
+        }
+
+        .pw-generate {
+            width: 100%;
+            font-size: 1.05rem;
+            background: linear-gradient(135deg, #6a8dff, #9b6aff);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        /* Поле ввода ссылки и результат QR-кода */
+        .qr-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 1rem;
+            border-radius: 16px;
+            border: 1px solid var(--btn-border);
+            background: var(--btn-bg);
+            color: var(--text-color);
+            box-shadow: var(--btn-shadow);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .qr-input:focus {
+            border-color: #6a8dff;
+            box-shadow: var(--btn-hover-shadow);
+        }
+
+        .qr-input::placeholder {
+            color: var(--btn-color);
+            opacity: 0.7;
+        }
+
+        .qr-result {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid var(--btn-border);
+            overflow: hidden;
+        }
+
+        .qr-result img {
+            max-width: 100%;
+            max-height: 240px;
+            padding: 10px;
+            background: #fff;
+        }
+
+        .qr-placeholder {
+            color: #8a94a6;
+            font-size: 0.95rem;
+        }
+
+        /* Калькулятор */
+        .calc-container {
+            width: min(340px, 100%);
+            padding: 26px 28px;
+            border-radius: 36px;
+            background: var(--container-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--container-border);
+            box-shadow: var(--container-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: all 0.5s ease;
+        }
+
+        .calc-display {
+            padding: 16px 18px;
+            border-radius: 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            box-shadow: var(--btn-shadow);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.7rem;
+            text-align: right;
+            color: var(--text-color);
+            min-height: 62px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .calc-btn {
+            padding: 14px 0;
+            font-size: 1.15rem;
+            font-weight: 500;
+            border: 1px solid var(--btn-border);
+            border-radius: 18px;
+            cursor: pointer;
+            background: var(--btn-bg);
+            color: var(--btn-color);
+            box-shadow: var(--btn-shadow);
+            transition: all 0.2s ease, color 0.5s ease, background 0.5s ease, border 0.5s ease;
+        }
+
+        .calc-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--btn-hover-shadow);
+        }
+
+        .calc-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--btn-active-shadow);
+        }
+
+        .calc-btn.op,
+        .calc-btn.equals {
+            background: linear-gradient(135deg, #6a8dff, #9b6aff);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(120, 130, 255, 0.3);
+        }
+
+        .calc-btn.equals {
+            grid-column: span 2;
+        }
+
+        .calc-history {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .calc-history-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
+
+        .calc-history-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0;
+            border: none;
+            background: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .calc-history-toggle .chev {
+            transition: transform 0.25s ease;
+        }
+
+        .calc-history.collapsed .chev {
+            transform: rotate(-90deg);
+        }
+
+        .calc-history.collapsed .calc-history-list {
+            display: none;
+        }
+
+        .calc-history-clear {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--btn-border);
+            background: var(--btn-bg);
+            color: var(--btn-color);
+            box-shadow: var(--btn-shadow);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .calc-history-clear:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--btn-hover-shadow);
+        }
+
+        .calc-history-list {
+            max-height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px 2px;
+            text-align: left;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+
+        .calc-history-item {
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            box-shadow: var(--btn-shadow);
+        }
+
+        .calc-history-item .h-expr {
+            opacity: 0.7;
+            font-size: 0.85rem;
+        }
+
+        .calc-history-item .h-result {
+            font-weight: 600;
+        }
+
+        .calc-history-empty {
+            color: var(--btn-color);
+            opacity: 0.6;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        /* Оверлей смены темы (старая тема с расширяющейся «дырой») */
+        .theme-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            will-change: mask-image, -webkit-mask-image;
+        }
+
+        /* Расходящаяся волна-кольцо в стиле liquid glass */
+        .glass-wave {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(circle,
+                transparent 50%,
+                rgba(255, 255, 255, 0.6) 62%,
+                rgba(255, 255, 255, 0.12) 74%,
+                transparent 86%);
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
+            box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.3);
+            will-change: transform, opacity;
+        }
+
+        /* Контейнер таймера */
+        .timer-container {
+            position: relative;
+            z-index: 1;
+            padding: 40px 60px;
+            border-radius: 50px;
+            background: var(--container-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--container-border);
+            box-shadow: var(--container-shadow);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.5s ease;
+        }
+
+        /* Дисплей времени */
+        .timer-display {
+            font-size: 5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            text-shadow: var(--text-shadow);
+            letter-spacing: 2px;
+            transition: color 0.5s ease, text-shadow 0.5s ease;
+        }
+
+        .timer-display .seg {
+            display: inline-block;
+            padding: 0 6px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+        }
+
+        .timer-display .sep {
+            cursor: default;
+        }
+
+        .timer-display.editing .seg {
+            cursor: ns-resize;
+        }
+
+        .timer-display.editing .seg:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .timer-display.editing .seg.selected {
+            color: #6a8dff;
+            background: rgba(255, 255, 255, 0.35);
+            text-shadow: none;
+        }
+
+        .timer-display.editing .sep {
+            opacity: 0.45;
+        }
+
+        /* Кнопки управления */
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 500;
+            border: 1px solid var(--btn-border);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease, color 0.5s ease, background 0.5s ease, border 0.5s ease;
+            background: var(--btn-bg);
+            color: var(--btn-color);
+            box-shadow: var(--btn-shadow);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--btn-hover-shadow);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--btn-active-shadow);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: var(--btn-shadow);
+        }
+
+        .btn.edit-active {
+            background: linear-gradient(135deg, #6a8dff, #9b6aff);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        /* Специфический стиль кнопки темы (круглая капля) */
+        .theme-toggle {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-fx"></div>
+    <div class="finish-glow"></div>
+
+    <header class="app-header">
+        <div class="brand">✨ Хамид</div>
+        <nav class="tabs">
+            <button class="tab active" data-view="timer">Секундомер</button>
+            <button class="tab" data-view="countdown">Таймер</button>
+            <button class="tab" data-view="password">Генератор паролей</button>
+            <button class="tab" data-view="qr">Генератор QR-кодов</button>
+            <button class="tab" data-view="calc">Калькулятор</button>
+        </nav>
+        <button class="btn theme-toggle" id="themeToggleBtn" title="Переключить тему">☀️</button>
+    </header>
+
+    <main class="app-main">
+        <section class="view active" id="timerView">
+            <div class="timer-container">
+                <div class="timer-display" id="display">
+                    <span class="seg" id="hoursPart" data-field="hours" title="Клик — +1, колесо — изменить">00</span><span class="sep">:</span><span class="seg" id="minutesPart" data-field="minutes" title="Клик — +1, колесо — изменить">00</span><span class="sep">:</span><span class="seg" id="secondsPart" data-field="seconds" title="Клик — +1, колесо — изменить">00</span>
+                </div>
+                <div class="controls">
+                    <button class="btn" id="editBtn" title="Настроить время">Изменить время</button>
+                    <button class="btn" id="startStopBtn">Старт</button>
+                    <button class="btn" id="resetBtn">Сброс</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="view" id="passwordView">
+            <div class="password-container">
+                <h2 class="pw-title">Генератор паролей</h2>
+                <div class="pw-output">
+                    <span id="passwordOutput">Нажми «Сгенерировать»</span>
+                    <button class="btn pw-copy" id="copyBtn" title="Скопировать">📋</button>
+                </div>
+                <div class="pw-options">
+                    <label class="pw-length">
+                        <span>Длина: <b id="lengthValue">16</b></span>
+                        <input type="range" id="lengthRange" min="4" max="40" value="16">
+                    </label>
+                    <label class="pw-check"><input type="checkbox" id="optUpper" checked> Заглавные буквы (A–Z)</label>
+                    <label class="pw-check"><input type="checkbox" id="optLower" checked> Строчные буквы (a–z)</label>
+                    <label class="pw-check"><input type="checkbox" id="optNumbers" checked> Цифры (0–9)</label>
+                    <label class="pw-check"><input type="checkbox" id="optSymbols" checked> Символы (!@#$…)</label>
+                </div>
+                <button class="btn pw-generate" id="generateBtn">Сгенерировать</button>
+            </div>
+        </section>
+
+        <section class="view" id="countdownView">
+            <div class="timer-container">
+                <div class="timer-display" id="cdDisplay">
+                    <span class="seg" id="cdHours" data-field="hours" title="Клик — +1, колесо — изменить">00</span><span class="sep">:</span><span class="seg" id="cdMinutes" data-field="minutes" title="Клик — +1, колесо — изменить">05</span><span class="sep">:</span><span class="seg" id="cdSeconds" data-field="seconds" title="Клик — +1, колесо — изменить">00</span>
+                </div>
+                <div class="controls">
+                    <button class="btn" id="cdConfigureBtn" title="Выбрать время">Настроить</button>
+                    <button class="btn" id="cdStartBtn">Старт</button>
+                    <button class="btn" id="cdResetBtn">Сброс</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="view" id="qrView">
+            <div class="password-container">
+                <h2 class="pw-title">Генератор QR-кода</h2>
+                <input type="text" id="qrInput" class="qr-input" placeholder="Вставьте ссылку…" autocomplete="off">
+                <div class="qr-result">
+                    <span class="qr-placeholder" id="qrPlaceholder">Здесь появится QR-код</span>
+                    <img id="qrImage" alt="QR-код" style="display:none;">
+                </div>
+                <button class="btn pw-generate" id="qrGenerateBtn">Создать QR-код</button>
+            </div>
+        </section>
+
+        <section class="view" id="calcView">
+            <div class="calc-container">
+                <div class="calc-display" id="calcDisplay">0</div>
+                <div class="calc-grid">
+                    <button class="calc-btn op" data-act="clear">C</button>
+                    <button class="calc-btn op" data-act="back">⌫</button>
+                    <button class="calc-btn op" data-act="percent">%</button>
+                    <button class="calc-btn op" data-act="op" data-val="÷">÷</button>
+
+                    <button class="calc-btn" data-act="num" data-val="7">7</button>
+                    <button class="calc-btn" data-act="num" data-val="8">8</button>
+                    <button class="calc-btn" data-act="num" data-val="9">9</button>
+                    <button class="calc-btn op" data-act="op" data-val="×">×</button>
+
+                    <button class="calc-btn" data-act="num" data-val="4">4</button>
+                    <button class="calc-btn" data-act="num" data-val="5">5</button>
+                    <button class="calc-btn" data-act="num" data-val="6">6</button>
+                    <button class="calc-btn op" data-act="op" data-val="−">−</button>
+
+                    <button class="calc-btn" data-act="num" data-val="1">1</button>
+                    <button class="calc-btn" data-act="num" data-val="2">2</button>
+                    <button class="calc-btn" data-act="num" data-val="3">3</button>
+                    <button class="calc-btn op" data-act="op" data-val="+">+</button>
+
+                    <button class="calc-btn" data-act="num" data-val="0">0</button>
+                    <button class="calc-btn" data-act="num" data-val=".">.</button>
+                    <button class="calc-btn equals" data-act="equals">=</button>
+                </div>
+                <div class="calc-history" id="calcHistory">
+                    <div class="calc-history-head">
+                        <button class="calc-history-toggle" id="calcHistoryToggle">История <span class="chev">▾</span></button>
+                        <button class="calc-history-clear" id="calcHistoryClear" title="Очистить историю">Очистить</button>
+                    </div>
+                    <div class="calc-history-list" id="calcHistoryList"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- Логика таймера ---
+        let timer = null;
+        let seconds = 0;
+        let isRunning = false;
+        let isEditing = false;
+        let selectedField = 'seconds';
+
+        const display = document.getElementById('display');
+        const hoursPart = document.getElementById('hoursPart');
+        const minutesPart = document.getElementById('minutesPart');
+        const secondsPart = document.getElementById('secondsPart');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const editBtn = document.getElementById('editBtn');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+        function pad(n) {
+            return n < 10 ? '0' + n : '' + n;
+        }
+
+        function getParts() {
+            return {
+                h: Math.floor(seconds / 3600),
+                m: Math.floor((seconds % 3600) / 60),
+                s: seconds % 60
+            };
+        }
+
+        function updateDisplay() {
+            const { h, m, s } = getParts();
+            hoursPart.textContent = pad(h);
+            minutesPart.textContent = pad(m);
+            secondsPart.textContent = pad(s);
+        }
+
+        function selectField(field) {
+            selectedField = field;
+            hoursPart.classList.toggle('selected', field === 'hours');
+            minutesPart.classList.toggle('selected', field === 'minutes');
+            secondsPart.classList.toggle('selected', field === 'seconds');
+        }
+
+        function adjustField(field, delta) {
+            let { h, m, s } = getParts();
+            if (field === 'hours') h = (h + delta + 24) % 24;
+            else if (field === 'minutes') m = (m + delta + 60) % 60;
+            else s = (s + delta + 60) % 60;
+            seconds = h * 3600 + m * 60 + s;
+            updateDisplay();
+        }
+
+        function setEditing(on) {
+            isEditing = on;
+            display.classList.toggle('editing', on);
+            editBtn.textContent = on ? 'Готово' : 'Изменить время';
+            editBtn.classList.toggle('edit-active', on);
+            startStopBtn.disabled = on;
+            resetBtn.disabled = on;
+
+            if (on) {
+                if (isRunning) {
+                    clearInterval(timer);
+                    isRunning = false;
+                    startStopBtn.textContent = 'Старт';
+                    document.body.classList.remove('running');
+                }
+                selectField('seconds');
+            } else {
+                selectField(null);
+            }
+        }
+
+        function toggleTimer() {
+            if (isEditing) return;
+            if (isRunning) {
+                clearInterval(timer);
+                startStopBtn.textContent = 'Старт';
+                isRunning = false;
+                document.body.classList.remove('running');
+            } else {
+                timer = setInterval(() => {
+                    seconds++;
+                    updateDisplay();
+                }, 1000);
+                startStopBtn.textContent = 'Пауза';
+                isRunning = true;
+                document.body.classList.add('running');
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            seconds = 0;
+            isRunning = false;
+            startStopBtn.textContent = 'Старт';
+            document.body.classList.remove('running');
+            updateDisplay();
+        }
+
+        startStopBtn.addEventListener('click', toggleTimer);
+        resetBtn.addEventListener('click', resetTimer);
+
+        // --- Режим изменения времени ---
+        editBtn.addEventListener('click', () => setEditing(!isEditing));
+
+        [hoursPart, minutesPart, secondsPart].forEach(part => {
+            part.addEventListener('click', () => {
+                if (!isEditing) return;
+                const field = part.dataset.field;
+                selectField(field);
+                adjustField(field, 1);
+            });
+        });
+
+        display.addEventListener('wheel', (e) => {
+            if (!isEditing) return;
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1 : -1;
+            let field = selectedField || 'seconds';
+            if (e.target.classList && e.target.classList.contains('seg')) {
+                field = e.target.dataset.field;
+                selectField(field);
+            }
+            adjustField(field, delta);
+        }, { passive: false });
+
+        // --- Генерация пузырьков и частиц для фонового эффекта ---
+        const bgFx = document.querySelector('.bg-fx');
+
+        // Пузырьки: разбросаны по экрану, в покое неподвижны
+        const BUBBLE_COUNT = 10;
+        for (let i = 0; i < BUBBLE_COUNT; i++) {
+            const bubble = document.createElement('span');
+            bubble.className = 'bubble';
+            const size = 24 + Math.random() * 70;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + '%';
+            bubble.style.top = Math.random() * 100 + '%';
+            bubble.style.opacity = 0.25 + Math.random() * 0.4;
+            bubble.style.setProperty('--dur', (3 + Math.random() * 3) + 's');
+            bgFx.appendChild(bubble);
+        }
+
+        // Частицы: появляются только при запуске таймера
+        const PARTICLE_COUNT = 40;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const particle = document.createElement('span');
+            particle.className = 'particle';
+            const size = 3 + Math.random() * 5;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.bottom = '-20px';
+            particle.style.setProperty('--dur', (6 + Math.random() * 8) + 's');
+            particle.style.setProperty('--delay', (Math.random() * 8) + 's');
+            particle.style.setProperty('--tx', (Math.random() * 80 - 40) + 'px');
+            bgFx.appendChild(particle);
+        }
+
+        // --- Логика переключения темы (волна от кнопки, новая тема раскрывается за ней) ---
+        function applyTheme(dark) {
+            if (dark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggleBtn.textContent = '🌙';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                themeToggleBtn.textContent = '☀️';
+            }
+            localStorage.setItem('theme', dark ? 'dark' : 'light');
+        }
+
+        // При заходе вспоминаем сохранённую тему
+        applyTheme(localStorage.getItem('theme') === 'dark');
+
+        themeToggleBtn.addEventListener('click', () => {
+            playWhoosh();
+            const r = themeToggleBtn.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const goingDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+
+            // Градиент старой темы — его показываем снаружи волны
+            const oldGradient = goingDark
+                ? 'linear-gradient(135deg, #e0e9f5, #b8cbe4)'
+                : 'linear-gradient(135deg, #181e29, #0d1117)';
+
+            // Сразу применяем новую тему — под волной она уже готова
+            applyTheme(goingDark);
+
+            // Оверлей старой темы, в котором от кнопки расширяется «дыра»
+            const overlay = document.createElement('div');
+            overlay.className = 'theme-overlay';
+            overlay.style.background = oldGradient;
+            document.body.appendChild(overlay);
+
+            const maxR = Math.hypot(window.innerWidth, window.innerHeight) * 1.1;
+            const start = performance.now();
+            const dur = 800;
+
+            function step(now) {
+                let t = (now - start) / dur;
+                if (t >= 1) {
+                    overlay.remove();
+                    return;
+                }
+                // плавное замедление (easeInOutCubic)
+                t = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                const rr = t * maxR;
+                const mask = `radial-gradient(circle ${rr}px at ${cx}px ${cy}px, transparent 98%, black 100%)`;
+                overlay.style.webkitMaskImage = mask;
+                overlay.style.maskImage = mask;
+                requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+
+        // --- Переключение вкладок (секундомер / таймер / генератор паролей) ---
+        const tabs = document.querySelectorAll('.tab');
+        const timerView = document.getElementById('timerView');
+        const countdownView = document.getElementById('countdownView');
+        const passwordView = document.getElementById('passwordView');
+        const qrView = document.getElementById('qrView');
+        const calcView = document.getElementById('calcView');
+
+        function switchView(name) {
+            playWhoosh();
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.view === name));
+            timerView.classList.toggle('active', name === 'timer');
+            countdownView.classList.toggle('active', name === 'countdown');
+            passwordView.classList.toggle('active', name === 'password');
+            qrView.classList.toggle('active', name === 'qr');
+            calcView.classList.toggle('active', name === 'calc');
+        }
+
+        tabs.forEach(t => t.addEventListener('click', () => switchView(t.dataset.view)));
+
+        // --- Генератор паролей ---
+        const passwordOutput = document.getElementById('passwordOutput');
+        const lengthRange = document.getElementById('lengthRange');
+        const lengthValue = document.getElementById('lengthValue');
+        const optUpper = document.getElementById('optUpper');
+        const optLower = document.getElementById('optLower');
+        const optNumbers = document.getElementById('optNumbers');
+        const optSymbols = document.getElementById('optSymbols');
+        const generateBtn = document.getElementById('generateBtn');
+        const copyBtn = document.getElementById('copyBtn');
+
+        const CHARS_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const CHARS_LOWER = 'abcdefghijklmnopqrstuvwxyz';
+        const CHARS_NUMBERS = '0123456789';
+        const CHARS_SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+        lengthRange.addEventListener('input', () => {
+            lengthValue.textContent = lengthRange.value;
+        });
+
+        function generatePassword() {
+            let pool = '';
+            if (optUpper.checked) pool += CHARS_UPPER;
+            if (optLower.checked) pool += CHARS_LOWER;
+            if (optNumbers.checked) pool += CHARS_NUMBERS;
+            if (optSymbols.checked) pool += CHARS_SYMBOLS;
+
+            if (!pool) {
+                const easterEggs = [
+                    'Если все убрал, то зачем сюда зашёл? 🤔',
+                    'Пароль из пустоты не родится. Включи хоть что-то 🙂',
+                    'Все галочки сняты — остались только ты и тишина. 🦗',
+                    'Пустой выбор — пустой пароль. Задумайся 😄'
+                ];
+                passwordOutput.textContent = easterEggs[Math.floor(Math.random() * easterEggs.length)];
+                return;
+            }
+
+            const length = parseInt(lengthRange.value, 10);
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += pool[Math.floor(Math.random() * pool.length)];
+            }
+            passwordOutput.textContent = result;
+        }
+
+        generateBtn.addEventListener('click', () => {
+            triggerGlassWave(generateBtn);
+            generatePassword();
+        });
+
+        copyBtn.addEventListener('click', async () => {
+            const text = passwordOutput.textContent;
+            if (!text || text.includes('набор') || text.includes('Сгенерировать')) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = '✅';
+                setTimeout(() => { copyBtn.textContent = '📋'; }, 1200);
+            } catch (e) {
+                alert('Не удалось скопировать');
+            }
+        });
+
+        // --- Таймер обратного отсчёта ---
+        let cdTimer = null;
+        let cdSeconds = 5 * 60;
+        let cdIsRunning = false;
+        let cdIsEditing = false;
+        let cdFinished = false;
+        let cdSelectedField = 'minutes';
+
+        const cdDisplay = document.getElementById('cdDisplay');
+        const cdHours = document.getElementById('cdHours');
+        const cdMinutes = document.getElementById('cdMinutes');
+        const cdSecondsEl = document.getElementById('cdSeconds');
+        const cdConfigureBtn = document.getElementById('cdConfigureBtn');
+        const cdStartBtn = document.getElementById('cdStartBtn');
+        const cdResetBtn = document.getElementById('cdResetBtn');
+
+        function cdPad(n) { return n < 10 ? '0' + n : '' + n; }
+
+        function cdGetParts() {
+            return {
+                h: Math.floor(cdSeconds / 3600),
+                m: Math.floor((cdSeconds % 3600) / 60),
+                s: cdSeconds % 60
+            };
+        }
+
+        function cdUpdateDisplay() {
+            const { h, m, s } = cdGetParts();
+            cdHours.textContent = cdPad(h);
+            cdMinutes.textContent = cdPad(m);
+            cdSecondsEl.textContent = cdPad(s);
+        }
+
+        function cdSelectField(field) {
+            cdSelectedField = field;
+            cdHours.classList.toggle('selected', field === 'hours');
+            cdMinutes.classList.toggle('selected', field === 'minutes');
+            cdSecondsEl.classList.toggle('selected', field === 'seconds');
+        }
+
+        function cdAdjustField(field, delta) {
+            let { h, m, s } = cdGetParts();
+            if (field === 'hours') h = (h + delta + 24) % 24;
+            else if (field === 'minutes') m = (m + delta + 60) % 60;
+            else s = (s + delta + 60) % 60;
+            cdSeconds = h * 3600 + m * 60 + s;
+            cdUpdateDisplay();
+        }
+
+        function cdSetEditing(on) {
+            cdIsEditing = on;
+            cdDisplay.classList.toggle('editing', on);
+            cdConfigureBtn.textContent = on ? 'Готово' : 'Настроить';
+            cdConfigureBtn.classList.toggle('edit-active', on);
+            cdStartBtn.disabled = on;
+            cdResetBtn.disabled = on;
+            if (on) {
+                if (cdIsRunning) cdPause();
+                cdSelectField('minutes');
+            } else {
+                cdSelectField(null);
+            }
+        }
+
+        // --- Звук будильника (Web Audio) ---
+        let audioCtx = null;
+        let alarmTimer = null;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    audioCtx = null;
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playAlarmBeep() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            [0, 0.25].forEach(offset => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 880;
+                gain.gain.setValueAtTime(0.0001, now + offset);
+                gain.gain.exponentialRampToValueAtTime(0.6, now + offset + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.22);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.24);
+            });
+        }
+
+        function startAlarm() {
+            ensureAudio();
+            if (!audioCtx) return;
+            playAlarmBeep();
+            alarmTimer = setInterval(playAlarmBeep, 700);
+        }
+
+        function stopAlarm() {
+            if (alarmTimer) {
+                clearInterval(alarmTimer);
+                alarmTimer = null;
+            }
+        }
+
+        // --- Звуки интерфейса (клики и переходы) ---
+        function playClick() {
+            ensureAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1600, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.05);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.1, now + 0.006);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        }
+
+        function playWhoosh() {
+            ensureAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.26);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.07, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.32);
+        }
+
+        // Лёгкий клик на любую кнопку (вкладки и тема звучат по-своему)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn || btn === themeToggleBtn || btn.closest('.tabs')) return;
+            playClick();
+        });
+
+        function cdStart() {
+            if (cdIsEditing || cdSeconds <= 0) return;
+            ensureAudio();
+            stopAlarm();
+            cdFinished = false;
+            cdIsRunning = true;
+            cdStartBtn.textContent = 'Пауза';
+            document.body.classList.remove('finished');
+            document.body.classList.add('running');
+            cdTimer = setInterval(() => {
+                cdSeconds--;
+                cdUpdateDisplay();
+                if (cdSeconds <= 0) cdFinish();
+            }, 1000);
+        }
+
+        function cdPause() {
+            clearInterval(cdTimer);
+            cdIsRunning = false;
+            cdStartBtn.textContent = 'Старт';
+            document.body.classList.remove('running');
+        }
+
+        function cdFinish() {
+            clearInterval(cdTimer);
+            cdIsRunning = false;
+            cdFinished = true;
+            cdStartBtn.textContent = 'Стоп';
+            document.body.classList.remove('running');
+            document.body.classList.add('finished');
+            cdUpdateDisplay();
+            startAlarm();
+        }
+
+        function cdToggle() {
+            if (cdFinished) {
+                stopAlarm();
+                cdFinished = false;
+                cdStartBtn.textContent = 'Старт';
+                document.body.classList.remove('finished');
+                return;
+            }
+            if (cdIsRunning) cdPause();
+            else cdStart();
+        }
+
+        function cdReset() {
+            clearInterval(cdTimer);
+            stopAlarm();
+            cdSeconds = 0;
+            cdIsRunning = false;
+            cdFinished = false;
+            cdStartBtn.textContent = 'Старт';
+            document.body.classList.remove('running');
+            document.body.classList.remove('finished');
+            cdUpdateDisplay();
+        }
+
+        cdConfigureBtn.addEventListener('click', () => cdSetEditing(!cdIsEditing));
+        cdStartBtn.addEventListener('click', cdToggle);
+        cdResetBtn.addEventListener('click', cdReset);
+
+        [cdHours, cdMinutes, cdSecondsEl].forEach(part => {
+            part.addEventListener('click', () => {
+                if (!cdIsEditing) return;
+                const field = part.dataset.field;
+                cdSelectField(field);
+                cdAdjustField(field, 1);
+            });
+        });
+
+        cdDisplay.addEventListener('wheel', (e) => {
+            if (!cdIsEditing) return;
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1 : -1;
+            let field = cdSelectedField || 'minutes';
+            if (e.target.classList && e.target.classList.contains('seg')) {
+                field = e.target.dataset.field;
+                cdSelectField(field);
+            }
+            cdAdjustField(field, delta);
+        }, { passive: false });
+
+        cdUpdateDisplay();
+
+        // --- Расходящаяся волна во все стороны от кнопки ---
+        function glassWave(x, y) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const base = 140;
+            const maxScale = (Math.hypot(vw, vh) / base) * 0.95;
+            const waves = 1;
+
+            for (let i = 0; i < waves; i++) {
+                const ring = document.createElement('span');
+                ring.className = 'glass-wave';
+                ring.style.width = base + 'px';
+                ring.style.height = base + 'px';
+                ring.style.left = (x - base / 2) + 'px';
+                ring.style.top = (y - base / 2) + 'px';
+                document.body.appendChild(ring);
+
+                const dur = 2600;
+                const anim = ring.animate([
+                    { transform: 'scale(0.05)', opacity: 0 },
+                    { transform: 'scale(0.6)', opacity: 0.8, offset: 0.14 },
+                    { transform: `scale(${maxScale})`, opacity: 0 }
+                ], { duration: dur, delay: i * 200, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)', fill: 'both' });
+                anim.onfinish = () => ring.remove();
+            }
+        }
+
+        function triggerGlassWave(el) {
+            const r = el.getBoundingClientRect();
+            glassWave(r.left + r.width / 2, r.top + r.height / 2);
+        }
+
+        // --- Генератор QR-кодов ---
+        const qrInput = document.getElementById('qrInput');
+        const qrGenerateBtn = document.getElementById('qrGenerateBtn');
+        const qrImage = document.getElementById('qrImage');
+        const qrPlaceholder = document.getElementById('qrPlaceholder');
+
+        qrGenerateBtn.addEventListener('click', () => {
+            triggerGlassWave(qrGenerateBtn);
+            const text = qrInput.value.trim();
+            if (!text) {
+                qrPlaceholder.textContent = 'Вставьте ссылку';
+                qrPlaceholder.style.display = 'block';
+                qrImage.style.display = 'none';
+                return;
+            }
+            const url = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=' + encodeURIComponent(text);
+            qrImage.onload = () => {
+                qrImage.style.display = 'block';
+                qrPlaceholder.style.display = 'none';
+            };
+            qrImage.onerror = () => {
+                qrImage.style.display = 'none';
+                qrPlaceholder.style.display = 'block';
+                qrPlaceholder.textContent = 'Не удалось создать QR-код (нет интернета?)';
+            };
+            qrImage.src = url;
+        });
+
+        // --- Калькулятор ---
+        const calcDisplay = document.getElementById('calcDisplay');
+        const calcGrid = document.querySelector('#calcView .calc-grid');
+        let calcCurr = '0';
+        let calcPrev = null;
+        let calcOp = null;
+        let calcFresh = false;
+
+        function calcUpdate() {
+            calcDisplay.textContent = calcCurr;
+        }
+
+        function calcClear() {
+            calcCurr = '0';
+            calcPrev = null;
+            calcOp = null;
+            calcFresh = false;
+            calcUpdate();
+        }
+
+        function calcBack() {
+            if (calcFresh || calcCurr === 'Ошибка') return;
+            calcCurr = calcCurr.length > 1 ? calcCurr.slice(0, -1) : '0';
+            calcUpdate();
+        }
+
+        function calcPercent() {
+            if (calcCurr === 'Ошибка') return;
+            calcCurr = String(parseFloat(calcCurr) / 100);
+            calcUpdate();
+        }
+
+        function calcDigit(d) {
+            if (calcFresh || calcCurr === 'Ошибка') {
+                calcCurr = '0';
+                calcFresh = false;
+            }
+            if (d === '.') {
+                if (!calcCurr.includes('.')) calcCurr += '.';
+            } else if (calcCurr === '0') {
+                calcCurr = d;
+            } else if (calcCurr.length < 14) {
+                calcCurr += d;
+            }
+            calcUpdate();
+        }
+
+        function calcOperator(op) {
+            if (calcCurr === 'Ошибка') return;
+            if (calcOp !== null && calcPrev !== null && !calcFresh) {
+                calcEquals();
+            }
+            calcPrev = parseFloat(calcCurr);
+            calcOp = op;
+            calcFresh = true;
+        }
+
+        function calcEquals() {
+            if (calcOp === null || calcPrev === null) return;
+            const a = calcPrev;
+            const op = calcOp;
+            const b = parseFloat(calcCurr);
+            let r;
+            switch (op) {
+                case '+': r = a + b; break;
+                case '−': r = a - b; break;
+                case '×': r = a * b; break;
+                case '÷': r = b === 0 ? 'Ошибка' : a / b; break;
+            }
+            calcOp = null;
+            calcPrev = null;
+            calcFresh = true;
+            if (r === 'Ошибка') {
+                calcCurr = 'Ошибка';
+            } else {
+                calcCurr = String(Math.round(r * 1e10) / 1e10);
+                addHistory(formatNum(a) + ' ' + op + ' ' + formatNum(b), calcCurr);
+            }
+            calcUpdate();
+        }
+
+        calcGrid.addEventListener('click', (e) => {
+            const btn = e.target.closest('.calc-btn');
+            if (!btn) return;
+            const act = btn.dataset.act;
+            if (act === 'num') calcDigit(btn.dataset.val);
+            else if (act === 'op') calcOperator(btn.dataset.val);
+            else if (act === 'equals') calcEquals();
+            else if (act === 'clear') calcClear();
+            else if (act === 'back') calcBack();
+            else if (act === 'percent') calcPercent();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!calcView.classList.contains('active')) return;
+            if (e.key >= '0' && e.key <= '9') calcDigit(e.key);
+            else if (e.key === '.') calcDigit('.');
+            else if (e.key === '+') calcOperator('+');
+            else if (e.key === '-') calcOperator('−');
+            else if (e.key === '*') calcOperator('×');
+            else if (e.key === '/') { e.preventDefault(); calcOperator('÷'); }
+            else if (e.key === '%') calcPercent();
+            else if (e.key === 'Enter' || e.key === '=') calcEquals();
+            else if (e.key === 'Backspace') calcBack();
+            else if (e.key === 'Escape') calcClear();
+        });
+
+        // --- История вычислений ---
+        const calcHistoryList = document.getElementById('calcHistoryList');
+        const calcHistoryClear = document.getElementById('calcHistoryClear');
+        let calcHistory = [];
+
+        function formatNum(n) {
+            return String(Math.round(n * 1e10) / 1e10);
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function loadHistory() {
+            try {
+                calcHistory = JSON.parse(localStorage.getItem('calcHistory')) || [];
+            } catch (e) {
+                calcHistory = [];
+            }
+            if (!Array.isArray(calcHistory)) calcHistory = [];
+        }
+
+        function saveHistory() {
+            localStorage.setItem('calcHistory', JSON.stringify(calcHistory));
+        }
+
+        function addHistory(expr, result) {
+            calcHistory.unshift({ expr, result });
+            if (calcHistory.length > 50) calcHistory.length = 50;
+            saveHistory();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (!calcHistory.length) {
+                calcHistoryList.innerHTML = '<div class="calc-history-empty">Пока пусто</div>';
+                return;
+            }
+            calcHistoryList.innerHTML = calcHistory.map(h =>
+                `<div class="calc-history-item"><span class="h-expr">${escapeHtml(h.expr)} =</span> <span class="h-result">${escapeHtml(h.result)}</span></div>`
+            ).join('');
+        }
+
+        calcHistoryClear.addEventListener('click', () => {
+            calcHistory = [];
+            saveHistory();
+            renderHistory();
+        });
+
+        const calcHistoryToggle = document.getElementById('calcHistoryToggle');
+        const calcHistoryBox = document.getElementById('calcHistory');
+        calcHistoryToggle.addEventListener('click', () => {
+            calcHistoryBox.classList.toggle('collapsed');
+        });
+
+        loadHistory();
+        renderHistory();
+    </script>
+</body>
+</html>
